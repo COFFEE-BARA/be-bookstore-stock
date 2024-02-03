@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"regexp"
-	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 )
 
 var isbnData [][]string
@@ -16,21 +18,24 @@ var ypbookStock [][]string
 var aladinStock []string
 
 func main() {
-	http.HandleFunc("/api/book/stock", getStockHandler) //서버의 엔드포인트를 통해 ISBN과 가격 받아오기
-
-	// 8080 포트에서 서버 시작
-	fmt.Println("서버를 시작합니다. http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	lambda.Start(getStockHandler)
 }
 
-func getStockHandler(w http.ResponseWriter, r *http.Request) {
-	isbn := r.URL.Query().Get("isbn")
-	code := r.URL.Query().Get("code")
-	price := r.URL.Query().Get("price")
+func getStockHandler(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	isbn := r.QueryStringParameters["isbn"]
+	code := r.QueryStringParameters["code"]
+	price := r.QueryStringParameters["price"]
 
 	kyobo(isbn)
 	yp_book(code, price)
 	aladin(isbn)
+
+	response := events.APIGatewayProxyResponse{
+		StatusCode: 200,
+		Body:       "Lambda function executed successfully!",
+	}
+
+	return response, nil
 }
 
 func kyobo(isbn string) {
@@ -132,7 +137,7 @@ func aladin(isbn string) {
 	aladinList := make(map[string]string)
 
 	doc.Find("a.usedshop_off_text3").Each(func(_ int, element *goquery.Selection) {
-		storeName := strings.TrimSpace(element.Text())
+		storeName := element.Text()
 		aladinList[storeName] = "1"
 	})
 
