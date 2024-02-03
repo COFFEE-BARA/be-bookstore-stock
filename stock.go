@@ -6,10 +6,9 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 )
 
 var isbnData [][]string
@@ -21,21 +20,16 @@ func main() {
 	lambda.Start(getStockHandler)
 }
 
-func getStockHandler(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	isbn := r.QueryStringParameters["isbn"]
-	code := r.QueryStringParameters["code"]
-	price := r.QueryStringParameters["price"]
+func getStockHandler(ctx context.Context, event map[string]string) (string, error) {
+	isbn := event["isbn"]
+	code := event["code"]
+	price := event["price"]
 
 	kyobo(isbn)
 	yp_book(code, price)
 	aladin(isbn)
 
-	response := events.APIGatewayProxyResponse{
-		StatusCode: 200,
-		Body:       "Lambda function executed successfully!",
-	}
-
-	return response, nil
+	return "Lambda function executed successfully!", nil
 }
 
 func kyobo(isbn string) {
@@ -137,12 +131,8 @@ func aladin(isbn string) {
 	aladinList := make(map[string]string)
 
 	doc.Find("a.usedshop_off_text3").Each(func(_ int, element *goquery.Selection) {
-		storeName := element.Text()
+		storeName := strings.TrimSpace(element.Text())
 		aladinList[storeName] = "1"
 	})
 
-	for store := range aladinList {
-		aladinStock = append(aladinStock, store)
-		fmt.Printf("%s\n", store)
-	}
-}
+	for store := range al
