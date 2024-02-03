@@ -15,6 +15,24 @@ var kyoboStock [][]string
 var ypbookStock [][]string
 var aladinStock []string
 
+func main() {
+	http.HandleFunc("/api/book/stock", getStockHandler) //서버의 엔드포인트를 통해 ISBN과 가격 받아오기
+
+	// 8080 포트에서 서버 시작
+	fmt.Println("서버를 시작합니다. http://localhost:8080")
+	http.ListenAndServe(":8080", nil)
+}
+
+func getStockHandler(w http.ResponseWriter, r *http.Request) {
+	isbn := r.URL.Query().Get("isbn")
+	code := r.URL.Query().Get("code")
+	price := r.URL.Query().Get("price")
+
+	kyobo(isbn)
+	yp_book(code, price)
+	aladin(isbn)
+}
+
 func kyobo(isbn string) {
 	kyoboNumberSlice := []string{"01", "58", "15", "23", "41", "66", "33", "72", "68", "36", "46", "74", "29", "90", "56", "49", "70", "52", "13", "47", "42", "25", "38", "69", "57", "59", "87", "04", "02", "05", "24", "45", "39", "77", "31", "28", "34", "48", "43"}
 	kyoboNameSlice := []string{"광화문", "가든파이브", "강남", "건대", "동대문", "신도림 디큐브", "목동", "서울대", "수유", "영등포", "은평", "이화여대", "잠실", "천호", "청량리", "합정", "광교", "광교월드 스퀘어", "부천", "분당", "송도", "인천", "일산", "판교", "평촌", "경성대ㆍ 부경대", "광주상무", "대구", "대전", "부산", "세종", "센텀시티", "울산", "전북대", "전주", "창원", "천안", "칠곡", "해운대 팝업 스토어"}
@@ -51,6 +69,7 @@ func kyobo(isbn string) {
 			stock := regexp.MustCompile("\\d+").FindString(strongTag.Text())
 			if stock != "0" {
 				kyoboStock = append(kyoboStock, []string{store, stock})
+				fmt.Printf("%s %s\n", store, stock)
 			}
 		} else {
 			fmt.Printf("%s에서의 태그 오류 또는 재고 정보 없음\n", site)
@@ -87,6 +106,7 @@ func yp_book(code string, price string) {
 	for store, stock := range ypbookList {
 		if stock != "0" {
 			ypbookStock = append(ypbookStock, []string{store, stock})
+			fmt.Printf("%s %s\n", store, stock)
 		}
 	}
 }
@@ -118,11 +138,6 @@ func aladin(isbn string) {
 
 	for store := range aladinList {
 		aladinStock = append(aladinStock, store)
+		fmt.Printf("%s\n", store)
 	}
-}
-
-func main() {
-	kyobo("9791168473690")
-	yp_book("101272360", "31000")
-	aladin("9791168473690")
 }
