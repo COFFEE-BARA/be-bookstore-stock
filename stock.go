@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/aws/aws-lambda-go/lambda"
 )
 
 var isbnData [][]string
@@ -133,6 +134,6 @@ func aladin(isbn string) {
 	doc.Find("a.usedshop_off_text3").Each(func(_ int, element *goquery.Selection) {
 		storeName := strings.TrimSpace(element.Text())
 		aladinList[storeName] = "1"
+		fmt.Printf("%s \n", storeName)
 	})
-
-	for store := range al
+}
