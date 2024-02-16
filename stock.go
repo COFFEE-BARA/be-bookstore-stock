@@ -168,11 +168,6 @@ func extractString(text, pattern string) string {
 	return ""
 }
 
-func extractNumber(text string) string {
-	re := regexp.MustCompile(`[^0-9]`)
-	return re.ReplaceAllString(text, "")
-}
-
 func aladin(isbn string) []string {
 	var result []string
 	url := fmt.Sprintf("https://www.aladin.co.kr/search/wsearchresult.aspx?SearchTarget=UsedStore&KeyTag=&SearchWord=%s", isbn)
