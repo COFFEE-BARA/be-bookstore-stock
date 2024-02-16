@@ -13,11 +13,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-var isbnData [][]string
-var kyoboStock [][]string
-var ypbookStock [][]string
-var aladinStock []string
-
 // func main() {
 // 	http.HandleFunc("/api/book/stock", getStockHandler)
 
