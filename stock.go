@@ -78,7 +78,6 @@ func getStockHandler(ctx context.Context, event map[string]string) (StockResult,
 	isbn := event["isbn"]
 	price := event["price"]
 
-	// dynamodb 연결해서 서점의 위도 경도 데이터와 합쳐야함
 	kyoboStock, err := kyobo(isbn)
 	if err != nil {
 		return StockResult{}, nil
@@ -113,8 +112,6 @@ func kyobo(isbn string) ([]BookstoreInfo, error) {
 	kyoboNumberSlice := []string{"01", "58", "15", "23", "41", "66", "33", "72", "68", "36", "46", "74", "29", "90", "56", "49", "70", "52", "13", "47", "42", "25", "38", "69", "57", "59", "87", "04", "02", "05", "24", "45", "39", "77", "31", "28", "34", "48", "43"}
 	kyoboNameSlice := []string{"광화문", "가든파이브", "강남", "건대", "동대문", "신도림 디큐브", "목동", "서울대", "수유", "영등포", "은평", "이화여대", "잠실", "천호", "청량리", "합정", "광교", "광교월드 스퀘어", "부천", "분당", "송도", "인천", "일산", "판교", "평촌", "경성대ㆍ 부경대", "광주상무", "대구", "대전", "부산", "세종", "센텀시티", "울산", "전북대", "전주", "창원", "천안", "칠곡", "해운대 팝업 스토어"}
 
-	fmt.Println(len(kyoboNumberSlice))
-	fmt.Println(len(kyoboNameSlice))
 	kyoboMap := make(map[string]string)
 	for i, number := range kyoboNumberSlice {
 		if i < len(kyoboNameSlice) {
@@ -150,6 +147,7 @@ func kyobo(isbn string) ([]BookstoreInfo, error) {
 				if len(locations) == 0 {
 					continue
 				}
+
 				latitude := locations[0].Latitude
 				longitude := locations[0].Longitude
 
@@ -161,7 +159,6 @@ func kyobo(isbn string) ([]BookstoreInfo, error) {
 					Longitude: longitude,
 				}
 				result = append(result, bookstoreInfo)
-				fmt.Println(bookstoreInfo.Branch, bookstoreInfo.Stock)
 			}
 		} else {
 			fmt.Printf("%s에서의 태그 오류 또는 재고 정보 없음\n", site)
@@ -318,9 +315,6 @@ func connectDynamodbAndImportLocation(bookstore string, branch string, isbn stri
 	}
 
 	location := bookstoreHandler(result, bookstore, branch, isbn)
-	if len(location) == 0 {
-		return []Location{}
-	}
 
 	return location
 }
@@ -362,8 +356,8 @@ func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch stri
 	var locations []Location
 	for _, item := range result.Items {
 		if *item["branch"].S == branch {
-			latitude := *item["latitude"].S
-			longitude := *item["longitude"].S
+			latitude := *item["lati"].S
+			longitude := *item["long"].S
 			location := Location{
 				Latitude:  latitude,
 				Longitude: longitude,
