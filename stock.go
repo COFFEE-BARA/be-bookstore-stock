@@ -361,7 +361,7 @@ func scanDynamoDB(sess *session.Session) (*dynamodb.ScanOutput, error) {
 func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch string, isbn string) []Location {
 	var locations []Location
 	for _, item := range result.Items {
-		if *item["bookstore"].S == branch {
+		if *item["branch"].S == branch {
 			latitude := *item["latitude"].S
 			longitude := *item["longitude"].S
 			location := Location{
