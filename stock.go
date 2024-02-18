@@ -37,10 +37,18 @@ func getStockHandler(ctx context.Context, event map[string]string) ([][]string, 
 	isbn := event["isbn"]
 	price := event["price"]
 
+	// dynamodb 연결해서 서점의 위도 경도 데이터와 합쳐야함
+
 	kyoboStock := kyobo(isbn)
 	ypbookStock := yp_book(isbn, price)
 	aladinStock := aladin(isbn)
 
+	fmt.Println("----------교보----------")
+	fmt.Println(kyoboStock)
+	fmt.Println("----------영풍----------")
+	fmt.Println(ypbookStock)
+	fmt.Println("----------알라딘----------")
+	fmt.Println(aladinStock)
 	return kyoboStock, ypbookStock, aladinStock
 }
 
@@ -81,7 +89,6 @@ func kyobo(isbn string) [][]string {
 			stock := regexp.MustCompile("\\d+").FindString(strongTag.Text())
 			if stock != "0" {
 				result = append(result, []string{store, stock})
-				// fmt.Printf("%s %s\n", store, stock)
 			}
 		} else {
 			fmt.Printf("%s에서의 태그 오류 또는 재고 정보 없음\n", site)
