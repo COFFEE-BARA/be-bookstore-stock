@@ -23,17 +23,16 @@ import (
 )
 
 type BookstoreInfo struct {
-	Bookstore string `json:"bookstore"`
-	Branch    string `json:"branch"`
-	Stock     string `json:"stock"`
-	Latitude  string `json:"latitude"`
-	Longitude string `json:"longitude"`
+	Bookstore string
+	Branch    string
+	Stock     string
+	Latitude  string
+	Longitude string
 }
-
 type StockResult struct {
-	KyoboStock  []BookstoreInfo `json:"kyoboStock"`
-	YpbookStock []BookstoreInfo `json:"ypbookStock"`
-	AladinStock []BookstoreInfo `json:"aladinStock"`
+	KyoboStock  []BookstoreInfo
+	YpbookStock []BookstoreInfo
+	AladinStock []BookstoreInfo
 }
 
 type Location struct {
@@ -90,23 +89,15 @@ func main() {
 }
 
 // /api/book/${isbn}/${price}/bookstore?lat=${lat}&lon=${lon}
-func getStockHandler(ctx context.Context, event map[string]string) (events.APIGatewayProxyResponse, error) {
-	isbn := event["isbn"]
-	price := event["price"]
+func getStockHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	isbn := request.PathParameters["isbn"]
+	price := request.PathParameters["price"]
+	fmt.Println(isbn, price)
 
 	headers := map[string]string{
 		"Access-Control-Allow-Origin":  "*", // 클라이언트 도메인
 		"Access-Control-Allow-Headers": "Content-Type",
 		"Access-Control-Allow-Methods": "OPTIONS,GET,POST", // 허용되는 메서드
-	}
-
-	// OPTIONS 요청에 대한 처리
-	if event["httpMethod"] == "OPTIONS" {
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusOK,
-			Headers:    headers,
-			Body:       "", // 빈 응답 본문
-		}, nil
 	}
 
 	kyoboStock, err := kyobo(isbn)
