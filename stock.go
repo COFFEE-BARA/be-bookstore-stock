@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -21,17 +23,17 @@ import (
 )
 
 type BookstoreInfo struct {
-	Bookstore string
-	Branch    string
-	Stock     string
-	Latitude  string
-	Longitude string
+	Bookstore string `json:"bookstore"`
+	Branch    string `json:"branch"`
+	Stock     string `json:"stock"`
+	Latitude  string `json:"latitude"`
+	Longitude string `json:"longitude"`
 }
 
 type StockResult struct {
-	KyoboStock  []BookstoreInfo
-	YpbookStock []BookstoreInfo
-	AladinStock []BookstoreInfo
+	KyoboStock  []BookstoreInfo `json:"kyoboStock"`
+	YpbookStock []BookstoreInfo `json:"ypbookStock"`
+	AladinStock []BookstoreInfo `json:"aladinStock"`
 }
 
 type Location struct {
@@ -40,15 +42,23 @@ type Location struct {
 }
 
 // func main() {
-// 	http.HandleFunc("/api/book/stock", getStockHandler)
-
+// 	http.HandleFunc("/api/book/", getStockHandler)
 // 	fmt.Println("서버를 시작합니다. http://localhost:8080")
 // 	http.ListenAndServe(":8080", nil)
 // }
 
 // func getStockHandler(w http.ResponseWriter, r *http.Request) {
-// 	isbn := r.URL.Query().Get("isbn")
-// 	price := r.URL.Query().Get("price")
+// 	parts := strings.Split(r.URL.Path, "/")
+// 	if len(parts) < 4 {
+// 		http.Error(w, "Invalid URL", http.StatusBadRequest)
+// 		return
+// 	}
+// 	isbn := parts[3]
+// 	price := parts[4]
+// 	bookstoreURL := fmt.Sprintf("/api/book/%s/%s/bookstore", isbn, price)
+
+// 	// isbn := r.URL.Query().Get("isbn")
+// 	// price := r.URL.Query().Get("price")
 
 // 	kyoboStock, err := kyobo(isbn)
 // 	if err != nil {
@@ -70,28 +80,38 @@ type Location struct {
 // 	fmt.Println(ypbookStock)
 // 	fmt.Println("----------알라딘----------")
 // 	fmt.Println(aladinStock)
+
+// 	w.WriteHeader(http.StatusOK)
+// 	w.Write([]byte("bookstoreURL: " + bookstoreURL))
 // }
 
 func main() {
 	lambda.Start(getStockHandler)
 }
 
-// /api/book/${.isbn}/bookstore?lat=${lat}&lon=${lon}
-func getStockHandler(ctx context.Context, event map[string]string) (StockResult, error) {
+// /api/book/${isbn}/${price}/bookstore?lat=${lat}&lon=${lon}
+func getStockHandler(ctx context.Context, event map[string]string) (events.APIGatewayProxyResponse, error) {
 	isbn := event["isbn"]
 	price := event["price"]
 
+	// Set CORS headers
+	headers := map[string]string{
+		"Access-Control-Allow-Origin":  "*",
+		"Access-Control-Allow-Headers": "Content-Type",
+		"Access-Control-Allow-Methods": "*",
+	}
+
 	kyoboStock, err := kyobo(isbn)
 	if err != nil {
-		return StockResult{}, nil
+		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
 	}
 	ypbookStock, err := yp_book(isbn, price)
 	if err != nil {
-		return StockResult{}, nil
+		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
 	}
 	aladinStock, err := aladin(isbn)
 	if err != nil {
-		return StockResult{}, nil
+		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
 	}
 
 	stockResult := StockResult{
@@ -107,7 +127,17 @@ func getStockHandler(ctx context.Context, event map[string]string) (StockResult,
 	fmt.Println("----------알라딘----------")
 	fmt.Println(aladinStock)
 
-	return stockResult, nil
+	jsonData, err := json.Marshal(stockResult)
+	if err != nil {
+		fmt.Println("JSON 인코딩 오류:", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500, Headers: headers}, err
+	}
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: 200,
+		Headers:    headers,
+		Body:       string(bodyJSON),
+	}, nil
 }
 
 func kyobo(isbn string) ([]BookstoreInfo, error) {
@@ -361,11 +391,11 @@ func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch stri
 		latitude := *item["lati"].S
 		longitude := *item["long"].S
 
-		location := Location{
-			Latitude:  latitude,
-			Longitude: longitude,
-		}
-		distance := calculateDistance(location, latitude, longitude)
+		// location := Location{
+		// 	Latitude:  latitude,
+		// 	Longitude: longitude,
+		// }
+		// distance := calculateDistance(location, latitude, longitude)
 
 		if *item["branch"].S == branch {
 
