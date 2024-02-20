@@ -176,9 +176,9 @@ func kyobo(isbn string) ([]BookstoreInfo, error) {
 			stock := regexp.MustCompile("\\d+").FindString(strongTag.Text())
 			if stock != "0" {
 				locations := connectDynamodbAndImportLocation("교보문고", branch, isbn)
-				if len(locations) == 0 {
-					continue
-				}
+				// if len(locations) == 0 {
+				// 	continue
+				// }
 
 				latitude := locations[0].Latitude
 				longitude := locations[0].Longitude
@@ -231,9 +231,9 @@ func yp_book(isbn string, price string) ([]BookstoreInfo, error) {
 	for branch, stock := range ypbookList {
 		if stock != "0" {
 			locations := connectDynamodbAndImportLocation("영풍문고", branch, isbn)
-			if len(locations) == 0 {
-				continue
-			}
+			// if len(locations) == 0 {
+			// 	continue
+			// }
 			latitude := locations[0].Latitude
 			longitude := locations[0].Longitude
 
@@ -396,7 +396,7 @@ func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch stri
 		// }
 		// distance := calculateDistance(location, latitude, longitude)
 
-		if *item["branch"].S == branch {
+		if *item["branch"].S == branch && *item["stock"].S == "" {
 
 			location := Location{
 				Latitude:  latitude,
