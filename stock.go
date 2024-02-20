@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -74,6 +76,7 @@ func main() {
 	lambda.Start(getStockHandler)
 }
 
+// /api/book/${.isbn}/bookstore?lat=${lat}&lon=${lon}
 func getStockHandler(ctx context.Context, event map[string]string) (StockResult, error) {
 	isbn := event["isbn"]
 	price := event["price"]
@@ -355,9 +358,17 @@ func scanDynamoDB(sess *session.Session) (*dynamodb.ScanOutput, error) {
 func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch string, isbn string) []Location {
 	var locations []Location
 	for _, item := range result.Items {
+		latitude := *item["lati"].S
+		longitude := *item["long"].S
+
+		location := Location{
+			Latitude:  latitude,
+			Longitude: longitude,
+		}
+		distance := calculateDistance(location, latitude, longitude)
+
 		if *item["branch"].S == branch {
-			latitude := *item["lati"].S
-			longitude := *item["long"].S
+
 			location := Location{
 				Latitude:  latitude,
 				Longitude: longitude,
@@ -366,4 +377,26 @@ func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch stri
 		}
 	}
 	return locations
+}
+
+func calculateDistance(location Location, latitude string, longitude string) float64 {
+	lat1, _ := strconv.ParseFloat(location.Latitude, 64)
+	lon1, _ := strconv.ParseFloat(location.Longitude, 64)
+	lat2, _ := strconv.ParseFloat(latitude, 64)
+	lon2, _ := strconv.ParseFloat(longitude, 64)
+
+	const earthRadius = 6371
+
+	lat1 = lat1 * math.Pi / 180
+	lon1 = lon1 * math.Pi / 180
+	lat2 = lat2 * math.Pi / 180
+	lon2 = lon2 * math.Pi / 180
+
+	dlon := lon2 - lon1
+	dlat := lat2 - lat1
+	a := math.Pow(math.Sin(dlat/2), 2) + math.Cos(lat1)*math.Cos(lat2)*math.Pow(math.Sin(dlon/2), 2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	distance := earthRadius * c
+
+	return distance
 }
