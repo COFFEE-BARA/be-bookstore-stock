@@ -100,26 +100,29 @@ func getStockHandler(ctx context.Context, event map[string]string) (events.APIGa
 		"Access-Control-Allow-Methods": "OPTIONS,GET,POST", // 허용되는 메서드
 	}
 
-	// // OPTIONS 요청에 대한 처리
-	// if event["httpMethod"] == "OPTIONS" {
-	// 	return events.APIGatewayProxyResponse{
-	// 		StatusCode: http.StatusOK,
-	// 		Headers:    headers,
-	// 		Body:       "", // 빈 응답 본문
-	// 	}, nil
-	// }
+	// OPTIONS 요청에 대한 처리
+	if event["httpMethod"] == "OPTIONS" {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusOK,
+			Headers:    headers,
+			Body:       "", // 빈 응답 본문
+		}, nil
+	}
 
 	kyoboStock, err := kyobo(isbn)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
+		// return []StockResult{}, nil
 	}
 	ypbookStock, err := yp_book(isbn, price)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
+		// return []StockResult{}, nil
 	}
 	aladinStock, err := aladin(isbn)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
+		// return []StockResult{}, nil
 	}
 
 	stockResult := StockResult{
