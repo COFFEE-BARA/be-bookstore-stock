@@ -230,6 +230,8 @@ func yp_book(isbn string, price string) ([]BookstoreInfo, error) {
 
 	for branch, stock := range ypbookList {
 		if stock != "0" {
+			jum := "점"
+			branch = strings.Replace(branch, jum, "", -1)
 			locations := connectDynamodbAndImportLocation("영풍문고", branch, isbn)
 			// if len(locations) == 0 {
 			// 	continue
@@ -312,6 +314,8 @@ func aladin(isbn string) ([]BookstoreInfo, error) {
 
 	doc.Find("a.usedshop_off_text3").Each(func(_ int, element *goquery.Selection) {
 		branch := strings.TrimSpace(element.Text())
+		jum := "점"
+		branch = strings.Replace(branch, jum, "", -1)
 		locations := connectDynamodbAndImportLocation("알라딘", branch, isbn)
 		if len(locations) == 0 {
 			return
