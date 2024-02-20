@@ -112,17 +112,14 @@ func getStockHandler(ctx context.Context, event map[string]string) (events.APIGa
 	kyoboStock, err := kyobo(isbn)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
-		// return []StockResult{}, nil
 	}
 	ypbookStock, err := yp_book(isbn, price)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
-		// return []StockResult{}, nil
 	}
 	aladinStock, err := aladin(isbn)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
-		// return []StockResult{}, nil
 	}
 
 	stockResult := StockResult{
