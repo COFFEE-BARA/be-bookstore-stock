@@ -400,7 +400,7 @@ func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch stri
 		// }
 		// distance := calculateDistance(location, latitude, longitude)
 
-		if *item["branch"].S == branch && *item["stock"].S == "" {
+		if *item["branch"].S == branch && *item["stock"].S != "0" || *item["stock"].S != "" {
 
 			location := Location{
 				Latitude:  latitude,
