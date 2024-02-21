@@ -16,6 +16,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -54,32 +55,32 @@ type Location struct {
 }
 
 func main() {
-	// // 람다
-	// lambda.Start(getStockHandler)
+	// 람다
+	lambda.Start(getStockHandler)
 
-	//test~~~~~~~~~~~~~~~~~~~~~~~~~~
-	testEventFile, err := os.Open("test-event.json")
-	if err != nil {
-		log.Fatalf("Error opening test event file: %s", err)
-	}
-	defer testEventFile.Close()
+	// //test~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// testEventFile, err := os.Open("test-event.json")
+	// if err != nil {
+	// 	log.Fatalf("Error opening test event file: %s", err)
+	// }
+	// defer testEventFile.Close()
 
-	// Decode the test event JSON
-	var testEvent events.APIGatewayProxyRequest
-	err = json.NewDecoder(testEventFile).Decode(&testEvent)
-	if err != nil {
-		log.Fatalf("Error decoding test event JSON: %s", err)
-	}
+	// // Decode the test event JSON
+	// var testEvent events.APIGatewayProxyRequest
+	// err = json.NewDecoder(testEventFile).Decode(&testEvent)
+	// if err != nil {
+	// 	log.Fatalf("Error decoding test event JSON: %s", err)
+	// }
 
-	// Invoke the Lambda handler function with the test event
-	response, err := getStockHandler(context.Background(), testEvent)
-	if err != nil {
-		log.Fatalf("Error invoking Lambda handler: %s", err)
-	}
+	// // Invoke the Lambda handler function with the test event
+	// response, err := getStockHandler(context.Background(), testEvent)
+	// if err != nil {
+	// 	log.Fatalf("Error invoking Lambda handler: %s", err)
+	// }
 
-	// Print the response
-	fmt.Printf("%v\n", response.StatusCode)
-	fmt.Printf("%v\n", response.Body)
+	// // Print the response
+	// fmt.Printf("%v\n", response.StatusCode)
+	// fmt.Printf("%v\n", response.Body)
 }
 
 // /api/book/${isbn}/bookstore?lat=${lat}&lon=${lon}
