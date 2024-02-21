@@ -39,50 +39,6 @@ type Location struct {
 	Longitude string
 }
 
-// func main() {
-// 	http.HandleFunc("/api/book/", getStockHandler)
-// 	fmt.Println("서버를 시작합니다. http://localhost:8080")
-// 	http.ListenAndServe(":8080", nil)
-// }
-
-// func getStockHandler(w http.ResponseWriter, r *http.Request) {
-// 	parts := strings.Split(r.URL.Path, "/")
-// 	if len(parts) < 4 {
-// 		http.Error(w, "Invalid URL", http.StatusBadRequest)
-// 		return
-// 	}
-// 	isbn := parts[3]
-// 	price := parts[4]
-// 	bookstoreURL := fmt.Sprintf("/api/book/%s/%s/bookstore", isbn, price)
-
-// 	// isbn := r.URL.Query().Get("isbn")
-// 	// price := r.URL.Query().Get("price")
-
-// 	kyoboStock, err := kyobo(isbn)
-// 	if err != nil {
-// 		return
-// 	}
-// 	ypbookStock, err := yp_book(isbn, price)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	aladinStock, err := aladin(isbn)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	fmt.Println("----------교보----------")
-// 	fmt.Println(kyoboStock)
-// 	fmt.Println("----------영풍----------")
-// 	fmt.Println(ypbookStock)
-// 	fmt.Println("----------알라딘----------")
-// 	fmt.Println(aladinStock)
-
-// 	w.WriteHeader(http.StatusOK)
-// 	w.Write([]byte("bookstoreURL: " + bookstoreURL))
-// }
-
 func main() {
 	// // 람다
 	// lambda.Start(getStockHandler)
@@ -112,11 +68,10 @@ func main() {
 	fmt.Printf("%v\n", response.Body)
 }
 
-// /api/book/${isbn/bookstore?lat=${lat}&lon=${lon}
+// /api/book/${isbn}/bookstore?lat=${lat}&lon=${lon}
 func getStockHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	isbn := request.PathParameters["isbn"]
-	// price := request.PathParameters["price"]
-	// fmt.Println(isbn)
+	fmt.Println("ISBN : ", isbn)
 
 	headers := map[string]string{
 		"Access-Control-Allow-Origin":  "*", // 클라이언트 도메인
@@ -234,7 +189,6 @@ func yp_book(isbn string) ([]BookstoreInfo, error) {
 
 	data, err := detailYP(isbn)
 	if err != nil {
-		fmt.Println("영풍문고 세부코드 못가져옴:", err)
 		return []BookstoreInfo{}, nil
 	}
 	code := data[isbn][0]
@@ -344,8 +298,6 @@ func detailYP(isbn string) (map[string][]string, error) {
 
 	resultDict[isbn] = []string{checkboxValue, costNumber}
 
-	fmt.Println("----------")
-	fmt.Println(resultDict) //map[9788970187426:[code price]]
 	return resultDict, nil
 }
 
@@ -459,11 +411,7 @@ func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch stri
 		latitude := *item["lati"].S
 		longitude := *item["long"].S
 
-		// location := Location{
-		// 	Latitude:  latitude,
-		// 	Longitude: longitude,
-		// }
-		// distance := calculateDistance(location, latitude, longitude)
+		if *item["branch"].S == branch && stock != "" {
 
 		if *item["branch"].S == branch && *item["stock"].S != "0" || *item["stock"].S != "" {
 
