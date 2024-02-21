@@ -83,10 +83,12 @@ func getStockHandler(ctx context.Context, request events.APIGatewayProxyRequest)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
 	}
+
 	ypbookStock, err := yp_book(isbn)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
 	}
+
 	aladinStock, err := aladin(isbn)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
@@ -143,28 +145,35 @@ func kyobo(isbn string) ([]BookstoreInfo, error) {
 
 		if resp.StatusCode != http.StatusOK {
 			log.Fatalf("Error: %s", resp.Status)
+			continue
 		}
 
 		doc, err := goquery.NewDocumentFromReader(resp.Body)
 		if err != nil {
 			log.Fatal(err)
+			continue
 		}
 
 		strongTag := doc.Find("strong:contains('재고 :')")
+
 		if strongTag.Length() > 0 {
 			stock := regexp.MustCompile("\\d+").FindString(strongTag.Text())
-			if stock != "0" {
-				locations := connectDynamodbAndImportLocation("교보문고", branch, isbn)
-				// if len(locations) == 0 {
-				// 	continue
-				// }
+
+			if stock != "" {
+				locations, err := connectDynamodbAndImportLocation("교보문고", branch, isbn, stock)
+				if err != nil {
+					fmt.Printf("다이나모 디비 연결 및 장소 임포트 에러 : ", err)
+				}
+				if len(locations) == 0 {
+					continue
+				}
 
 				latitude := locations[0].Latitude
 				longitude := locations[0].Longitude
 
 				bookstoreInfo := BookstoreInfo{
 					Bookstore: "교보문고",
-					Branch:    branch,
+					Branch:    branch + "점",
 					Stock:     stock,
 					Latitude:  latitude,
 					Longitude: longitude,
@@ -221,18 +230,19 @@ func yp_book(isbn string) ([]BookstoreInfo, error) {
 
 	for branch, stock := range ypbookList {
 		if stock != "0" {
-			// jum := "점"
-			// branch = strings.Replace(branch, jum, "", -1)
-			locations := connectDynamodbAndImportLocation("영풍문고", branch, isbn)
-			// if len(locations) == 0 {
-			// 	continue
-			// }
+			locations, err := connectDynamodbAndImportLocation("영풍문고", branch, isbn, stock)
+			if err != nil {
+				fmt.Printf("다이나모 디비 연결 및 장소 임포트 에러 : ", err)
+			}
+			if len(locations) == 0 {
+				continue
+			}
 			latitude := locations[0].Latitude
 			longitude := locations[0].Longitude
 
 			bookstoreInfo := BookstoreInfo{
 				Bookstore: "영풍문고",
-				Branch:    branch,
+				Branch:    branch + "점",
 				Stock:     stock,
 				Latitude:  latitude,
 				Longitude: longitude,
@@ -331,49 +341,56 @@ func aladin(isbn string) ([]BookstoreInfo, error) {
 
 	doc.Find("a.usedshop_off_text3").Each(func(_ int, element *goquery.Selection) {
 		branch := strings.TrimSpace(element.Text())
-		// jum := "점"
-		// branch = strings.Replace(branch, jum, "", -1)
-		locations := connectDynamodbAndImportLocation("알라딘", branch, isbn)
-		if len(locations) == 0 {
-			return
-		}
-		latitude := locations[0].Latitude
-		longitude := locations[0].Longitude
 
-		bookstoreInfo := BookstoreInfo{
-			Bookstore: "알라딘",
-			Branch:    branch,
-			Stock:     "있음",
-			Latitude:  latitude,
-			Longitude: longitude,
+		locations, err := connectDynamodbAndImportLocation("알라딘", branch, isbn, "1")
+		if err != nil {
+			fmt.Printf("다이나모 디비 연결 및 장소 임포트 에러 : ", err)
 		}
-		result = append(result, bookstoreInfo)
+		if len(locations) != 0 {
+			latitude := locations[0].Latitude
+			longitude := locations[0].Longitude
+
+			bookstoreInfo := BookstoreInfo{
+				Bookstore: "알라딘",
+				Branch:    branch,
+				Stock:     "있음",
+				Latitude:  latitude,
+				Longitude: longitude,
+			}
+			result = append(result, bookstoreInfo)
+
+		}
+
 	})
 	return result, nil
 }
 
-func connectDynamodbAndImportLocation(bookstore string, branch string, isbn string) []Location {
+func connectDynamodbAndImportLocation(bookstore string, branch string, isbn string, stock string) ([]Location, error) {
 	loadEnv()
 
 	sess, err := createNewSession()
 	if err != nil {
 		log.Println("Error creating session:", err)
-		return []Location{}
+		return nil, err
 	}
 
 	result, err := scanDynamoDB(sess)
 	if err != nil {
-		log.Println(err)
-		return []Location{}
+		fmt.Println("다이나모 디비 스캔에러 : ", err)
+		return nil, err
 	}
 
-	location := bookstoreHandler(result, bookstore, branch, isbn)
+	location, err := bookstoreHandler(result, bookstore, branch, isbn, stock)
+	if err != nil {
+		fmt.Println("북스토어 핸들러 에러 : ", err)
+		return nil, err
+	}
 
-	return location
+	return location, nil
 }
 
 func loadEnv() {
-	err := godotenv.Load()
+	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -405,16 +422,15 @@ func scanDynamoDB(sess *session.Session) (*dynamodb.ScanOutput, error) {
 	return result, nil
 }
 
-func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch string, isbn string) []Location {
+func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch string, isbn string, stock string) ([]Location, error) {
 	var locations []Location
+
 	for _, item := range result.Items {
+
 		latitude := *item["lati"].S
 		longitude := *item["long"].S
 
 		if *item["branch"].S == branch && stock != "" {
-
-		if *item["branch"].S == branch && *item["stock"].S != "0" || *item["stock"].S != "" {
-
 			location := Location{
 				Latitude:  latitude,
 				Longitude: longitude,
@@ -422,7 +438,7 @@ func bookstoreHandler(result *dynamodb.ScanOutput, bookstore string, branch stri
 			locations = append(locations, location)
 		}
 	}
-	return locations
+	return locations, nil
 }
 
 func calculateDistance(location Location, latitude string, longitude string) float64 {
