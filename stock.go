@@ -23,17 +23,29 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type BookstoreInfo struct {
-	Bookstore string
-	Branch    string
-	Stock     string
-	Latitude  string
-	Longitude string
+type Response struct {
+	Code    int           `json:"code"`
+	Message string        `json:"message"`
+	Data    *ResponseData `json:"data"`
+}
+
+type ResponseData struct {
+	Isbn        string      `json:"isbn"`
+	Title       string      `json:"title"`
+	StockResult StockResult `json:"stockResult"`
 }
 type StockResult struct {
-	KyoboStock  []BookstoreInfo
-	YpbookStock []BookstoreInfo
-	AladinStock []BookstoreInfo
+	KyoboStockList  []BookstoreInfo `json:"kyoboStockList"`
+	YpbookStockList []BookstoreInfo `json:"ypbookStockList"`
+	AladinStockList []BookstoreInfo `json:"aladinStockList"`
+}
+
+type BookstoreInfo struct {
+	Bookstore string `json:"type"`
+	Branch    string `json:"name"`
+	Stock     string `json:"stock"`
+	Latitude  string `json:"latitude"`
+	Longitude string `json:"longtitude"`
 }
 
 type Location struct {
@@ -97,9 +109,9 @@ func getStockHandler(ctx context.Context, request events.APIGatewayProxyRequest)
 	}
 
 	stockResult := StockResult{
-		KyoboStock:  kyoboStock,
-		YpbookStock: ypbookStock,
-		AladinStock: aladinStock,
+		KyoboStockList:  kyoboStock,
+		YpbookStockList: ypbookStock,
+		AladinStockList: aladinStock,
 	}
 
 	fmt.Println("----------교보----------")
@@ -109,7 +121,15 @@ func getStockHandler(ctx context.Context, request events.APIGatewayProxyRequest)
 	fmt.Println("----------알라딘----------")
 	fmt.Println(aladinStock)
 
-	jsonData, err := json.Marshal(stockResult)
+	jsonData, err := json.Marshal(Response{
+		Code:    200,
+		Message: "책의 재고 서점 리스트를 가져오는데 성공했습니다.",
+		Data: &ResponseData{
+			Isbn:        isbn,
+			Title:       title,
+			StockResult: stockResult,
+		},
+	})
 	if err != nil {
 		fmt.Println("JSON 인코딩 오류:", err)
 		return events.APIGatewayProxyResponse{StatusCode: 500, Headers: headers}, err
