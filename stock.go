@@ -84,14 +84,33 @@ func main() {
 
 // /api/book/${isbn}/bookstore?lat=${lat}&lon=${lon}
 func getStockHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	isbn := request.PathParameters["isbn"]
-	fmt.Println("ISBN : ", isbn)
+	//0. 환경변수 로드
+	loadEnv()
 
 	headers := map[string]string{
 		"Access-Control-Allow-Origin":  "*", // 클라이언트 도메인
 		"Access-Control-Allow-Headers": "Content-Type",
 		"Access-Control-Allow-Methods": "OPTIONS,POST", // 허용되는 메서드
 	}
+
+	//1. url parameter 받아오기
+	isbn := request.PathParameters["isbn"]
+	fmt.Println("ISBN : ", isbn)
+
+	//2. esCloud에서 책이름 가져오기
+	esClient, err := connectElasticSearch(os.Getenv("CLOUD_ID"), os.Getenv("API_KEY"))
+	if err != nil {
+		fmt.Println("Error connecting to Elasticsearch:", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500, Headers: headers}, err
+	}
+
+	title, err := searchTitle(esClient, os.Getenv("INDEX_NAME"), os.Getenv("FIELD_NAME"), isbn)
+	if err != nil {
+		fmt.Println("인덱스 검색 중 오류 발생:", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500, Headers: headers}, err
+	}
+
+	//3. isbn 값으로 각 서점들 재고 찾아오기
 
 	kyoboStock, err := kyobo(isbn)
 	if err != nil {
@@ -140,6 +159,76 @@ func getStockHandler(ctx context.Context, request events.APIGatewayProxyRequest)
 		Headers:    headers,
 		Body:       string(jsonData),
 	}, nil
+}
+
+func connectElasticSearch(CLOUD_ID, API_KEY string) (*elasticsearch.Client, error) {
+	config := elasticsearch.Config{
+		CloudID: CLOUD_ID,
+		APIKey:  API_KEY,
+	}
+
+	es, err := elasticsearch.NewClient(config)
+	if err != nil {
+		fmt.Print(err)
+		return nil, err
+	}
+
+	fmt.Print("엘라스틱 클라이언트 : ", es)
+
+	// Elasticsearch 서버에 핑을 보내 연결을 테스트합니다.
+	res, err := es.Ping()
+	if err != nil {
+		fmt.Println("Elasticsearch와 연결 중 오류 발생:", err)
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	fmt.Println("Elasticsearch 클라이언트가 성공적으로 연결되었습니다.")
+
+	return es, nil
+
+}
+
+func searchTitle(es *elasticsearch.Client, indexName, fieldName, value string) (string, error) {
+
+	//검색 쿼리 작성
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"match": map[string]interface{}{
+				fieldName: value,
+			},
+		},
+	}
+
+	// 쿼리를 JSON으로 변환합니다.
+	queryJSON, err := json.Marshal(query)
+	if err != nil {
+		return "", err
+	}
+
+	// 검색 요청을 수행합니다.
+	res, err := es.Search(
+		es.Search.WithContext(context.Background()),
+		es.Search.WithIndex(indexName),
+		es.Search.WithBody(bytes.NewReader(queryJSON)),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	// 검색 응답을 디코딩합니다.
+	var searchResponse map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&searchResponse); err != nil {
+		fmt.Println("검색 응답 디코딩 중 오류 발생:", err)
+		return "", err
+	}
+
+	// 히트를 추출하고 후 저장
+	hits := searchResponse["hits"].(map[string]interface{})["hits"].([]interface{})
+	temp := hits[0].(map[string]interface{})["_source"].(map[string]interface{})
+
+	return temp["Title"].(string), nil
+
 }
 
 func kyobo(isbn string) ([]BookstoreInfo, error) {
@@ -388,7 +477,6 @@ func aladin(isbn string) ([]BookstoreInfo, error) {
 }
 
 func connectDynamodbAndImportLocation(bookstore string, branch string, isbn string, stock string) ([]Location, error) {
-	loadEnv()
 
 	sess, err := createNewSession()
 	if err != nil {
