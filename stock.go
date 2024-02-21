@@ -88,23 +88,23 @@ func main() {
 	lambda.Start(getStockHandler)
 }
 
-// /api/book/${isbn}/${price}/bookstore?lat=${lat}&lon=${lon}
+// /api/book/${isbn/bookstore?lat=${lat}&lon=${lon}
 func getStockHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	isbn := request.PathParameters["isbn"]
-	price := request.PathParameters["price"]
-	fmt.Println(isbn, price)
+	// price := request.PathParameters["price"]
+	// fmt.Println(isbn)
 
 	headers := map[string]string{
 		"Access-Control-Allow-Origin":  "*", // 클라이언트 도메인
 		"Access-Control-Allow-Headers": "Content-Type",
-		"Access-Control-Allow-Methods": "OPTIONS,GET,POST", // 허용되는 메서드
+		"Access-Control-Allow-Methods": "OPTIONS,POST", // 허용되는 메서드
 	}
 
 	kyoboStock, err := kyobo(isbn)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
 	}
-	ypbookStock, err := yp_book(isbn, price)
+	ypbookStock, err := yp_book(isbn)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 404, Headers: headers}, err
 	}
@@ -199,9 +199,22 @@ func kyobo(isbn string) ([]BookstoreInfo, error) {
 	return result, nil
 }
 
-func yp_book(isbn string, price string) ([]BookstoreInfo, error) {
+type yp struct {
+	Code string
+	Isbn string
+}
+
+func yp_book(isbn string) ([]BookstoreInfo, error) {
+
 	var result []BookstoreInfo
-	code := detailYP(isbn)
+
+	data, err := detailYP(isbn)
+	if err != nil {
+		fmt.Println("영풍문고 세부코드 못가져옴:", err)
+		return []BookstoreInfo{}, nil
+	}
+	code := data[isbn][0]
+	price := data[isbn][1]
 
 	url := fmt.Sprintf("https://www.ypbooks.co.kr/ypbooks_mobile/sub/mBranchStockLoc.jsp?bookCd=%s&bookCost=%s", code, price)
 
@@ -212,7 +225,7 @@ func yp_book(isbn string, price string) ([]BookstoreInfo, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("Error: %s", resp.Status)
+		log.Fatalf("http Status 에러: %s", resp.Status)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
@@ -230,7 +243,7 @@ func yp_book(isbn string, price string) ([]BookstoreInfo, error) {
 
 	for branch, stock := range ypbookList {
 		if stock != "0" {
-			jum := "점"
+			// jum := "점"
 			// branch = strings.Replace(branch, jum, "", -1)
 			locations := connectDynamodbAndImportLocation("영풍문고", branch, isbn)
 			// if len(locations) == 0 {
@@ -252,36 +265,64 @@ func yp_book(isbn string, price string) ([]BookstoreInfo, error) {
 	return result, nil
 }
 
-func detailYP(code string) string {
+func detailYP(isbn string) (map[string][]string, error) {
+	resultDict := make(map[string][]string)
 	url := "https://www.ypbooks.co.kr/ypbooks/search/requestAjaxSearchTab.jsp"
 
-	data := strings.NewReader("query=" + code + "&collection=ALL&searchfield=ALL&showCnt=&sortField=RANK&notSoldOut=Y&catesearch=false&c1=&c2=&c3=&viewStyle=list&pageNum=1")
+	resultDict = make(map[string][]string)
+	resultDict["query"] = []string{isbn}
+	resultDict["collection"] = []string{"ALL"}
+	resultDict["searchfield"] = []string{"ALL"}
+	resultDict["showCnt"] = []string{""}
+	resultDict["sortField"] = []string{"RANK"}
+	resultDict["notSoldOut"] = []string{"Y"}
+	resultDict["catesearch"] = []string{"false"}
+	resultDict["c1"] = []string{""}
+	resultDict["c2"] = []string{""}
+	resultDict["viewStyle"] = []string{"list"}
+	resultDict["pageNum"] = []string{"1"}
 
-	req, err := http.NewRequest("POST", url, data)
+	resp, err := http.PostForm(url, resultDict)
 	if err != nil {
-		fmt.Println("Error creating request:", err)
+		return nil, err
 	}
-
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-	}
-
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error: %s", resp.Status)
+	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error reading response:", err)
+		return nil, err
 	}
 
-	responseText := string(body)
+	soup, err := goquery.NewDocumentFromReader(strings.NewReader(string(body)))
+	if err != nil {
+		return nil, err
+	}
 
-	result := extractString(responseText, `<input\s+name="checkboxCartBook"\s+[^>]*value="([^"]*)"[^>]*>`)
+	checkbox := soup.Find("input[name='checkboxCartBook']")
+	costSpan := soup.Find("span.cost")
 
-	return result
+	checkboxValue := ""
+	if checkbox.Length() > 0 {
+		checkboxValue, _ = checkbox.Attr("value")
+	}
+
+	costText := ""
+	if costSpan.Length() > 0 {
+		costText = costSpan.Text()
+	}
+
+	re := regexp.MustCompile(`[^0-9]`)
+	costNumber := re.ReplaceAllString(costText, "")
+
+	resultDict[isbn] = []string{checkboxValue, costNumber}
+
+	fmt.Println("----------")
+	fmt.Println(resultDict) //map[9788970187426:[code price]]
+	return resultDict, nil
 }
 
 func extractString(text, pattern string) string {
