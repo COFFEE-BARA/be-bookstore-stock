@@ -116,14 +116,9 @@ Content-Type: application/json
 <img src="https://img.shields.io/badge/amazondynamodb-4053D6?style=for-the-badge&logo=amazondynamodb&logoColor=white"/> <img src="https://img.shields.io/badge/amazons3-569A31?style=for-the-badge&logo=amazons3&logoColor=white"/>
 
 
-## CI/CD
+## CI/CD & Deploy
 
-<img src="https://img.shields.io/badge/codebuild-68A51C?style=for-the-badge&logo=codebuild&logoColor=white"/> <img src="https://img.shields.io/badge/codepipeline-527FFF?style=for-the-badge&logo=codepipeline&logoColor=white"/>
-
-
-## Deploy
-
-<img src="https://img.shields.io/badge/awslambda-FF9900?style=for-the-badge&logo=awslambda&logoColor=white"/> <img src="https://img.shields.io/badge/amazonapigateway-FF4F8B?style=for-the-badge&logo=amazonapigateway&logoColor=white"/> <img src="https://img.shields.io/badge/ecr-FC4C02?style=for-the-badge&logo=ecr&logoColor=white"/>
+<img src="https://img.shields.io/badge/codebuild-68A51C?style=for-the-badge&logo=codebuild&logoColor=white"/> <img src="https://img.shields.io/badge/codepipeline-527FFF?style=for-the-badge&logo=codepipeline&logoColor=white"/> <img src="https://img.shields.io/badge/docker-2496ED?style=for-the-badge&logo=docker&logoColor=white"> <img src="https://img.shields.io/badge/awslambda-FF9900?style=for-the-badge&logo=awslambda&logoColor=white"/> <img src="https://img.shields.io/badge/amazonapigateway-FF4F8B?style=for-the-badge&logo=amazonapigateway&logoColor=white"/> <img src="https://img.shields.io/badge/ecr-FC4C02?style=for-the-badge&logo=ecr&logoColor=white"/>
 
 
 ## Develop Tool
@@ -137,3 +132,11 @@ Content-Type: application/json
 
 # 🏡 be-bookstore-stock architecture
 <img width="329" alt="be-bookstore-stock-archi" src="https://github.com/COFFEE-BARA/be-bookstore-stock/assets/72396865/bbf81206-4394-41ce-a3de-083ef55ab137">
+<br/> <br/>
+1. 각 서점의 홈페이지에서 각 지점명과 주소 스크래핑 <br/>
+2. 주소를 카카오 API를 통해 위도, 경도 좌표로 변환 <br/>
+3. 수집한 정보를 csv 파일로 저장 <br/>
+4. csv 파일을 S3에 업로드 <br/>
+5. DynamoDB의 import from S3 기능 사용해 테이블 구축 <br/>
+6. API Gateway에서 요청이 들어오면 Lambda 실행 <br/>
+7. Lambda는 isbn 값을 이용해 서점의 홈페이지에서 책의 재고를 실시간으로 스크래핑
