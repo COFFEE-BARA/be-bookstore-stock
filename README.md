@@ -5,7 +5,7 @@
 
 <br/>
 
-# 🤖 be-book-search api 명세
+# 🤖 API 명세
 
 - URL: BASE_URL/api/book/{책의 isbn 값}/bookstore
 - Method: `GET`
