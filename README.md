@@ -16,10 +16,6 @@
 
 ## ☝🏻Request Header
 
-| Name | Type | Description | Required |
-| --- | --- | --- | --- |
-| Content-Type | String | application/json | Required |
-
 ```
 Content-Type: application/json
 ```
@@ -33,33 +29,6 @@ Content-Type: application/json
 <br/>
 
 # 🗣️ Response
-
-| Name | Type | Description |
-| --- | --- | --- |
-| code | Integer | 상태 코드 |
-| message | String | 상태 메시지 |
-| data | Object |  |
-| — isbn | String | 책의 13자리 isbn 값 |
-| — title | String | 책 이름 |
-| —stockResult | Object |  |
-| —— kyoboStockList | List |  |
-| ———— type | String | 교보문고 |
-| ———— name | String | 지점명 |
-| ———— stock | String | 재고개수 |
-| ———— latitude | String | 위도 |
-| ———— longitude | String | 경도 |
-| —— ypbookStockList | List |  |
-| ———— type | String | 영풍문고 |
-| ———— name | String | 지점명 |
-| ———— stock | String | 재고개수 |
-| ———— latitude | String | 위도 |
-| ———— longitude | String | 경도 |
-| —— aladinStockList | List |  |
-| ———— type | String | 알라딘 |
-| ———— name | String | 지점명 |
-| ———— stock | String | 재고존재여부 |
-| ———— latitude | String | 위도 |
-| ———— longitude | String | 경도 |
 
 ## ☝🏻Response Body
 
@@ -137,7 +106,7 @@ Content-Type: application/json
 
 # 🏆 Tech Stack
 
-## Framework
+## Programming Language
 
 <img src="https://img.shields.io/badge/go-00ADD8?style=for-the-badge&logo=go&logoColor=white"/>
 
