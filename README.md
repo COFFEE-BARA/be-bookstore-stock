@@ -1,3 +1,7 @@
+# be-bookstore-stock
+
+<br/>
+
 # 💿 Dynamo DB table 구조도
 
 | bookstore (PK) | branch (SK) | latitude | longitude |
@@ -9,6 +13,7 @@
 
 - URL: BASE_URL/api/book/{책의 isbn 값}/bookstore
 - Method: `GET`
+- 기능 소개: 책의 재고가 존재하는 서점들의 위치를 알려주는 기능
 
 <br/>
 
